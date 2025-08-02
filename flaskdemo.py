@@ -34,29 +34,24 @@ def search():
 @app.route('/results')
 def results():
     """Results page route. Render the search results."""
-    search_term = session['search_term']
-    page = get_page(search_term)
-    return render_template("results.html", page=page)
+    search_term = session.get('search_term')
+    result = get_page(search_term)
+    return render_template("results.html", page=result["page"], message=result["message"])
 
 
 def get_page(search_term):
-    """Get a Wikipedia page object based on the search term."""
-    # This function is not a route
+    """Return a dict with page object or error message."""
     try:
         page = wikipedia.page(search_term)
+        return {"page": page, "message": None}
     except wikipedia.exceptions.PageError:
-        # No such page, so return a random one
-        page = wikipedia.page(wikipedia.random())
-    except wikipedia.exceptions.DisambiguationError:
-        # This is a disambiguation page; get the first real page (close enough)
-        page_titles = wikipedia.search(search_term)
-        # Sometimes the next page has the same name (different caps), so don't try the same again
-        if page_titles[1].lower() == page_titles[0].lower():
-            title = page_titles[2]
-        else:
-            title = page_titles[1]
-        page = get_page(wikipedia.page(title))
-    return page
+        return {"page": None, "message": f'Page id "{search_term}" does not match any pages. Try another id!'}
+    except wikipedia.exceptions.DisambiguationError as e:
+        return {"page": None, "message": (
+            "We need a more specific title. Try one of the following, or a new search:\n"
+            + str(e.options))
+        }
+
 
 
 if __name__ == '__main__':
